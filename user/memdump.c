@@ -61,5 +61,57 @@ void
 memdump(char *fmt, char *data)
 {
   // Your code here.
-
+  for (int i = 0; i < sizeof(fmt); i ++) {
+    switch (fmt[i])
+    {
+    case 'i': {
+      uint32 prt = 0;
+      for (int j = 0; j < 4; j ++) {
+        prt |= (((uint32)(*(data + j))) << (j * 8));
+      }
+      printf("%d\n", prt);
+      data += 4;
+    }
+      break;
+    case 'p': {
+      uint64 prt = 0;
+      for (int j = 0; j < 8; j ++) {
+        prt |= (((uint64)(*(data + j))) << (j * 8));
+      }
+      printf("%lx\n", prt);
+      data += 8;
+    }
+      break;
+    case 'h': {
+      uint16 prt = 0;
+      for (int j = 0; j < 2; j ++) {
+        prt |= (((uint16)(*(data + j))) << (j * 8));
+      }
+      printf("%d\n", prt);
+      data += 2;
+    }
+      break;
+    case 'c': {
+      char prt = *data;
+      printf("%c\n", prt);
+      data += 1;
+    }
+      break;
+    case 's': {
+      uint64 prt = 0;
+      for (int j = 0; j < 8; j ++) {
+        prt |= (((uint64)(*(data + j))) << (j * 8));
+      }
+      printf("%s\n", (char *)prt);
+      data += 8;
+    }
+      break;
+    case 'S': {
+      printf("%s\n", data);
+    }
+      break;
+    default:
+      break;
+    }
+  }
 }
