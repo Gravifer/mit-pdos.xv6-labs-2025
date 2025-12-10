@@ -281,6 +281,7 @@ kfork(void)
 
   // copy syscall mask
   np->syscall_mask = p->syscall_mask;
+  safestrcpy(np->interpose_path, p->interpose_path, MAXPATH);
 
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)

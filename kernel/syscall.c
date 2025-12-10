@@ -134,11 +134,26 @@ void
 syscall(void)
 {
   int num, mask;
+  int exempt = 0; // exempt is a bool
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
   mask = p->syscall_mask;
-  if (mask & (1 << num)) {
+  // exempt path against open and exec
+  if ((num == SYS_open || num == SYS_exec)) {
+    char path[MAXPATH];
+    if(argstr(0, path, MAXPATH) > 0) {
+      // inline strcmp
+      const char *s1 = path;
+      const char *s2 = p->interpose_path;
+      while(*s1 && *s1 == *s2) {
+        s1++;
+        s2++;
+      }
+      exempt = (*s1 == 0 && *s2 == 0);
+    }
+  }
+  if (!exempt && (mask & (1 << num))) {
     // syscall n is disallowed
     // printf("%d %s: disallowed sys call %d\n",
     //         p->pid, p->name, num);

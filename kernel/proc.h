@@ -107,5 +107,5 @@ struct proc {
 
   // labs additions
   int syscall_mask;            // Mask of disallowed syscalls
-  char interpose_path[MAXPATH];// Path for interposed syscalls
+  char interpose_path[MAXPATH];// Exempt path for interposed syscalls
 };
