@@ -104,4 +104,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // labs additions
+  int syscall_mask;            // Mask of disallowed syscalls
+  char interpose_path[MAXPATH];// Path for interposed syscalls
 };

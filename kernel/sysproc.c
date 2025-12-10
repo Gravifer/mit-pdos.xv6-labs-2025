@@ -105,3 +105,21 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// lab syscall
+uint64
+sys_interpose(void)
+{
+  int mask;
+  char *path = "-";
+
+  argint(0, &mask);
+  argstr(1, path, MAXPATH);
+
+  struct proc *p = myproc();
+  acquire(&p->lock);
+  p->syscall_mask = mask;
+  safestrcpy(p->interpose_path, path, MAXPATH);
+  release(&p->lock);
+  return 0;
+}
