@@ -12,7 +12,7 @@ __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 
 // entry.S jumps here in machine mode on stack0.
 void
-start()
+start() // ANCHOR[id=xv6_start]
 {
   // set M Previous Privilege mode to Supervisor, for mret.
   unsigned long x = r_mstatus();
@@ -45,7 +45,7 @@ start()
   w_tp(id);
 
   // switch to supervisor mode and jump to main().
-  asm volatile("mret");
+  asm volatile("mret"); // LINK kernel/main.c#xv6_main
 }
 
 // ask each hart to generate timer interrupts.

@@ -143,7 +143,7 @@ found:
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
-  p->context.ra = (uint64)forkret;
+  p->context.ra = (uint64)forkret; // LINK #forkret
   p->context.sp = p->kstack + PGSIZE;
 
   return p;
@@ -217,7 +217,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 
 // Set up first user process.
 void
-userinit(void)
+userinit(void) // ANCHOR[id=userinit] userinit
 {
   struct proc *p;
 
@@ -500,7 +500,7 @@ yield(void)
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
 void
-forkret(void)
+forkret(void) // ANCHOR[id=forkret]
 {
   extern char userret[];
   static int first = 1;
@@ -509,7 +509,7 @@ forkret(void)
   // Still holding p->lock from scheduler.
   release(&p->lock);
 
-  if (first) {
+  if (first) { // ANCHOR[id=forkret_first]
     // File system initialization must be run in the context of a
     // regular process (e.g., because it calls sleep), and thus cannot
     // be run from main().
@@ -521,7 +521,7 @@ forkret(void)
 
     // We can invoke kexec() now that file system is initialized.
     // Put the return value (argc) of kexec into a0.
-    p->trapframe->a0 = kexec("/init", (char *[]){ "/init", 0 });
+    p->trapframe->a0 = kexec("/init", (char *[]){ "/init", 0 }); // LINK user/init.c#init_main
     if (p->trapframe->a0 == -1) {
       panic("exec");
     }
