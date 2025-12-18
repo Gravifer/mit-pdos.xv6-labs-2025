@@ -142,9 +142,73 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
+/** should print the following output:
+  ```
+    page table 0x0000000087f22000
+     ..0x0000000000000000: pte 0x0000000021fc7801 pa 0x0000000087f1e000
+     .. ..0x0000000000000000: pte 0x0000000021fc7401 pa 0x0000000087f1d000
+     .. .. ..0x0000000000000000: pte 0x0000000021fc7c5b pa 0x0000000087f1f000
+     .. .. ..0x0000000000001000: pte 0x0000000021fc705b pa 0x0000000087f1c000
+     .. .. ..0x0000000000002000: pte 0x0000000021fc6cd7 pa 0x0000000087f1b000
+     .. .. ..0x0000000000003000: pte 0x0000000021fc6807 pa 0x0000000087f1a000
+     .. .. ..0x0000000000004000: pte 0x0000000021fc64d7 pa 0x0000000087f19000
+     ..0x0000003fc0000000: pte 0x0000000021fc8401 pa 0x0000000087f21000
+     .. ..0x0000003fffe00000: pte 0x0000000021fc8001 pa 0x0000000087f20000
+     .. .. ..0x0000003fffffd000: pte 0x0000000021fd4813 pa 0x0000000087f52000
+     .. .. ..0x0000003fffffe000: pte 0x0000000021fd00c7 pa 0x0000000087f40000
+     .. .. ..0x0000003ffffff000: pte 0x0000000020001c4b pa 0x0000000080007000
+  ```
+  The first line displays the argument to vmprint. 
+  After that there is a line for each PTE, including PTEs that 
+    refer to page-table pages deeper in the tree. 
+  Each PTE line is indented by a number of " .." that indicates its depth in the tree. 
+  Each PTE line shows its virtual addresss, the pte bits, and 
+    the physical address extracted from the PTE. 
+  Don't print PTEs that are not valid. In the above example, 
+    the top-level page-table page has mappings for entries 0 and 255. 
+  The next level down for entry 0 has only index 0 mapped, and 
+    the bottom-level for that index 0 has a few entries mapped.
+  Your code might emit different physical addresses than those shown above. 
+    The number of entries and the virtual addresses should be the same.
+
+  Some hints:
+  - Use the macros at the end of the file kernel/riscv.h.
+  - The function freewalk may be inspirational.
+  - Use %p in your printf calls to print out full 64-bit hex PTEs and addresses as shown in the example.
+  
+> For every leaf page in the vmprint output, explain 
+    what it logically contains and what its permission bits are, and 
+    how it relates to the output of the earlier print_pgtbl() exercise above. 
+  Figure 3.4 in the xv6 book might be helpful, although note that 
+    the figure might have a slightly different set of pages than the process that's being inspected here.
+*/
 void
 vmprint(pagetable_t pagetable) {
   // your code here
+  printf("page table %p\n", pagetable);
+  void vmprint_helper(pagetable_t pagetable, int level, uint64 va_prefix);
+  vmprint_helper(pagetable, 0, 0);
+}
+
+void
+vmprint_helper(pagetable_t pagetable, int level, uint64 va_prefix) {
+  for(int i = 0; i < 512; i++){
+    pte_t *pte = &pagetable[i];
+    if((*pte & PTE_V) == 0)  // has physical page been allocated?
+      continue;
+
+    uint64 va = va_prefix | ((uint64)i << PXSHIFT(2 - level));
+    for(int j = 0; j <= level; j++) {
+      printf(" ..");
+    }
+    // printf("0x%lx: pte 0x%lx pa 0x%lx\n", va, *pte, PTE2PA(*pte));
+    printf("%p: pte %p pa %p\n", (void*) va, (void*) *pte, (void*) PTE2PA(*pte));
+
+    if(!PTE_LEAF(*pte)) {
+      pagetable_t next_level = (pagetable_t)PTE2PA(*pte);
+      vmprint_helper(next_level, level + 1, va);
+    }
+  }
 }
 #endif
 

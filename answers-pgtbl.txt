@@ -1,0 +1,10 @@
+#! info -a bash -o - | shuf -n50 | sed -n 's/  */ /g;s/^ //;/./p' | fmt -w 90 | head -8 > answers-pgtbl.txt
+
+* Command Line Editing::	Chapter describing the command line * Shell Variables::
+Variables used or set by Bash.	*************
+						versions of /bin/sh.
+* Job Control::			What job control is and how Bash allows you (‘ksh’),
+and the C-shell (‘csh’ and its successor, ‘tcsh’). The This is Edition 5.2,
+last updated 19 September 2022, of ‘The GNU Bash
+				to use it.
+* Indexes::			Various indexes for this manual.  This text is a
