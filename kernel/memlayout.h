@@ -63,9 +63,9 @@
 //   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
 #ifdef LAB_PGTBL
-#define USYSCALL (TRAPFRAME - PGSIZE)
+#define USYSCALL (TRAPFRAME - PGSIZE) // ANCHOR[id=define-usyscall]
 
-struct usyscall {
+struct usyscall { // ANCHOR[id=struct-usyscall]
   int pid;  // Process ID
 };
 #endif

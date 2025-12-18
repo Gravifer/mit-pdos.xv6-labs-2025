@@ -71,7 +71,7 @@ cpuid()
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
 struct cpu*
-mycpu(void)
+mycpu(void) // ANCHOR[id=mycpu]
 {
   int id = cpuid();
   struct cpu *c = &cpus[id];
@@ -80,7 +80,7 @@ mycpu(void)
 
 // Return the current struct proc *, or zero if none.
 struct proc*
-myproc(void)
+myproc(void) // ANCHOR[id=myproc]
 {
   push_off();
   struct cpu *c = mycpu();
@@ -125,6 +125,18 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+#ifdef LAB_PGTBL
+  // Allocate a usyscall page.
+  p->usyscall = (struct usyscall *)kalloc();
+  if(p->usyscall == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  // can just write it in now
+  p->usyscall->pid = p->pid;
+#endif // LAB_PGTBL
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -155,6 +167,11 @@ found:
 static void
 freeproc(struct proc *p)
 {
+#ifdef LAB_PGTBL
+  if(p->usyscall)
+    kfree((void*)p->usyscall);
+  p->usyscall = 0;
+#endif // LAB_PGTBL
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
@@ -202,6 +219,24 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+#ifdef LAB_PGTBL
+  // map the usyscall page just below the trapframe page
+  /* When each process is created, map one read-only page at USYSCALL 
+      (a virtual address defined in memlayout.h). 
+    At the start of this page, store a struct usyscall (also defined in memlayout.h), 
+      and initialize it to store the PID of the current process. 
+    For this lab, ugetpid() has been provided on the userspace side 
+      and will automatically use the USYSCALL mapping. 
+    You will receive full credit for this part of the lab 
+      if the ugetpid test case passes when running pgtbltest. */
+  if(mappages(pagetable, USYSCALL, PGSIZE,
+              (uint64) (p->usyscall), PTE_R | PTE_U) < 0){
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+#endif // LAB_PGTBL
   return pagetable;
 }
 
@@ -212,6 +247,9 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+#ifdef LAB_PGTBL
+  uvmunmap(pagetable, USYSCALL, 1, 0);
+#endif // LAB_PGTBL
   uvmfree(pagetable, sz);
 }
 

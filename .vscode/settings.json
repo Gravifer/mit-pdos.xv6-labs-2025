@@ -1,0 +1,8 @@
+{
+    "C_Cpp.default.defines": [
+        "LAB_PGTBL"
+    ],
+    "c-cpp-flylint.defines": [
+        "LAB_PGTBL"
+    ]
+}
