@@ -71,7 +71,7 @@ cpuid()
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
 struct cpu*
-mycpu(void) // ANCHOR[id=mycpu]
+mycpu(void) // ANCHOR[id=mycpu] mycpu
 {
   int id = cpuid();
   struct cpu *c = &cpus[id];
@@ -80,7 +80,7 @@ mycpu(void) // ANCHOR[id=mycpu]
 
 // Return the current struct proc *, or zero if none.
 struct proc*
-myproc(void) // ANCHOR[id=myproc]
+myproc(void) // ANCHOR[id=myproc] myproc
 {
   push_off();
   struct cpu *c = mycpu();
@@ -269,17 +269,17 @@ userinit(void) // ANCHOR[id=userinit] userinit
   release(&p->lock);
 }
 
-// Shrink user memory by n bytes.
+// Grow or shrink user memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
-growproc(int n)
+growproc(int n) // ANCHOR[id=growproc] growproc
 {
   uint64 sz;
   struct proc *p = myproc();
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+    if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) { // LINK kernel/vm.c#uvmalloc
       return -1;
     }
   } else if(n < 0){
@@ -538,7 +538,7 @@ yield(void)
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
 void
-forkret(void) // ANCHOR[id=forkret]
+forkret(void) // ANCHOR[id=forkret] forkret
 {
   extern char userret[];
   static int first = 1;
@@ -547,7 +547,7 @@ forkret(void) // ANCHOR[id=forkret]
   // Still holding p->lock from scheduler.
   release(&p->lock);
 
-  if (first) { // ANCHOR[id=forkret_first]
+  if (first) { // ANCHOR[id=forkret_first] forkret_first
     // File system initialization must be run in the context of a
     // regular process (e.g., because it calls sleep), and thus cannot
     // be run from main().

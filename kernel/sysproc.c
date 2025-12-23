@@ -49,9 +49,17 @@ sys_sbrk(void)
   argint(0, &n);
   argint(1, &t);
   addr = myproc()->sz;
+  
+  /* TODO: superpage
+   *  if a user program calls sbrk() with a size of 2 megabytes or more, 
+   *  and the newly created address range includes one or more areas 
+   *  that are two-megabyte-aligned and at least two megabytes in size, 
+   *  the kernel should use a single superpage 
+   *  (instead of hundreds of ordinary pages).
+  */
 
   if(t == SBRK_EAGER || n < 0) {
-    if(growproc(n) < 0) {
+    if(growproc(n) < 0) { // LINK kernel/proc.c#growproc
       return -1;
     }
   } else {

@@ -2,6 +2,11 @@
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
 
+#ifdef LAB_PGTBL
+// TODO: megapage - 2MB super pages.
+#define NSUPERPAGES 8
+#endif
+
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -66,7 +71,7 @@ kfree(void *pa)
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
 void *
-kalloc(void)
+kalloc(void) // ANCHOR[id=kalloc] kalloc
 {
   struct run *r;
 
@@ -80,3 +85,17 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+#ifdef LAB_PGTBL
+void
+superfree(void *pa)
+{
+  // push to supermem.freelist
+}
+
+void *
+superalloc(void)
+{
+  // pop from supermem.freelist
+}
+#endif

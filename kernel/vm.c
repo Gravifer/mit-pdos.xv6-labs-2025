@@ -279,6 +279,7 @@ uvmcreate()
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
+  // TODO: superpage forking
   uint64 a;
   pte_t *pte;
   int sz = PGSIZE;
@@ -306,8 +307,9 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 uint64
-uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
+uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) // ANCHOR[id=uvmalloc] uvmalloc
 {
+  // TODO: megapage - 2MB super pages.
   char *mem;
   uint64 a;
   int sz;
@@ -316,9 +318,12 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
     return oldsz;
 
   oldsz = PGROUNDUP(oldsz);
+
+  // * keep kalloc for 4K, and use superalloc for 2MB allocations.
+  // ? When more than 2MB is requested, should the remainder be super or normal?
   for(a = oldsz; a < newsz; a += sz){
     sz = PGSIZE;
-    mem = kalloc();
+    mem = kalloc(); // LINK kernel/kalloc.c#kalloc
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
       return 0;
@@ -393,6 +398,7 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
+  // TODO: superpage forking
   pte_t *pte;
   uint64 pa, i;
   uint flags;

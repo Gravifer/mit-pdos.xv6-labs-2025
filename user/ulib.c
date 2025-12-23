@@ -154,12 +154,12 @@ memcpy(void *dst, const void *src, uint n)
 }
 
 char *
-sbrk(int n) {
+sbrk(int n) { // ANCHOR[id=sbrk_eager] sbrk_eager
   return sys_sbrk(n, SBRK_EAGER);
 }
 
 char *
-sbrklazy(int n) {
+sbrklazy(int n) { // ANCHOR[id=sbrk_lazy] sbrk_lazy
   return sys_sbrk(n, SBRK_LAZY);
 }
 
