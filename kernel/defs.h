@@ -70,7 +70,6 @@ void            kinit(void);
 void            superfree(void *);
 void*           superalloc(void);
 void            superfreerange(void *, void *);
-void            superdemote(void *);
 #endif
 
 // log.c

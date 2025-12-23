@@ -27,7 +27,7 @@ struct run {
 static void kfree_internal(void *pa, int is_locked, int no_memset);
 static void *kalloc_internal(int is_locked, int no_memset);
 #ifdef LAB_PGTBL
-static void superdemote_internal(void *pa, int is_locked, int no_memset);
+static void superfree_internal(void *pa, int is_locked, int demote);
 #endif
 
 struct {
@@ -116,7 +116,7 @@ kalloc_internal(int is_locked, int no_memset) // ANCHOR[id=kalloc] kalloc
     // Demote a superpage into 512 regular pages
     struct run *super = kmem.superfreelist;
     kmem.superfreelist = super->next;
-    superdemote_internal(super, 1, 0);
+    superfree_internal(super, 1, 1);  // demote=1: split into freelist
     r = kmem.freelist;
     if(r)
       kmem.freelist = r->next;
@@ -143,22 +143,37 @@ void superfreerange(void *pa_start, void *pa_end)
 void
 superfree(void *pa)
 { // LINK #kfree
-  // push to superfreelist
-  struct run *r;
+  superfree_internal(pa, 0, 0);  // demote=0: add to superfreelist
+}
 
+// Free a superpage.
+// demote=0: add to superfreelist as a 2MB page
+// demote=1: split into 512 4KB pages and add to freelist
+static void
+superfree_internal(void *pa, int is_locked, int demote)
+{
   if(((uint64)pa % SUPERPGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("superfree");
 
-  // Fill with junk to catch dangling refs.
-  memset(pa, 2, SUPERPGSIZE);
+  if(!is_locked)
+    acquire(&kmem.lock);
 
-  r = (struct run*)pa;
+  if(demote) {
+    // Split superpage into 512 regular pages, add to freelist
+    char *p = (char*)pa;
+    for(int i = 0; i < 512; i++){
+      kfree_internal(p + i * PGSIZE, 1, 0);  // is_locked=1, no_memset=0
+    }
+  } else {
+    // Add to superfreelist as-is
+    memset(pa, 2, SUPERPGSIZE);  // fill with junk
+    struct run *r = (struct run*)pa;
+    r->next = kmem.superfreelist;
+    kmem.superfreelist = r;
+  }
 
-  acquire(&kmem.lock);
-  r->next = kmem.superfreelist;
-  kmem.superfreelist = r;
-  release(&kmem.lock);
-  return;
+  if(!is_locked)
+    release(&kmem.lock);
 }
 
 void *
@@ -175,22 +190,5 @@ superalloc(void)
   if(r)
     memset((char*)r, 5, SUPERPGSIZE); // fill with junk
   return (void*)r;
-}
-
-// demote a superpage at pa into normal pages, preserving content
-void
-superdemote(void *pa)
-{
-  superdemote_internal(pa, 0, 1);  // no_memset=1 to preserve content
-}
-static void
-superdemote_internal(void *pa, int is_locked, int no_memset)
-{
-  // Split superpage into 512 regular pages
-  char *p = (char*)pa;
-  for(int i = 0; i < 512; i++){
-    // Note: no_memset=1 to preserve content for partial-free demotion; for kalloc, the page will be memset later
-    kfree_internal(p + i * PGSIZE, is_locked, no_memset);
-  }
 }
 #endif
