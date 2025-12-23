@@ -66,6 +66,12 @@ void            ireclaim(int);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+#ifdef LAB_PGTBL
+void            superfree(void *);
+void*           superalloc(void);
+void            superfreerange(void *, void *);
+void            superdemote(void *);
+#endif
 
 // log.c
 void            initlog(int, struct superblock*);
