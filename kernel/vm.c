@@ -260,6 +260,61 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+#ifdef LAB_PGTBL
+// Walk to level-1 PTE (for superpage mapping).
+// Returns pointer to level-1 PTE, or 0 if allocation fails.
+static pte_t *
+walk_level1(pagetable_t pagetable, uint64 va, int alloc)
+{
+  if(va >= MAXVA)
+    panic("walk_level1");
+
+  // Level 2 → Level 1
+  pte_t *pte = &pagetable[PX(2, va)];
+  if(*pte & PTE_V) {
+    pagetable = (pagetable_t)PTE2PA(*pte);
+  } else {
+    if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
+      return 0;
+    memset(pagetable, 0, PGSIZE);
+    *pte = PA2PTE(pagetable) | PTE_V;
+  }
+  // Return level-1 PTE
+  return &pagetable[PX(1, va)];
+}
+
+int
+mapsuperpages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+{
+  uint64 a, last;
+  pte_t *pte;
+
+  if((va % SUPERPGSIZE) != 0)
+    panic("mapsuperpages: va not aligned");
+
+  if((size % SUPERPGSIZE) != 0)
+    panic("mapsuperpages: size not aligned");
+
+  if(size == 0)
+    panic("mapsuperpages: size");
+  
+  a = va;
+  last = va + size - SUPERPGSIZE;
+  for(;;){
+    if((pte = walk_level1(pagetable, a, 1)) == 0)
+      return -1;
+    if(*pte & PTE_V)
+      panic("mapsuperpages: remap");
+    *pte = PA2PTE(pa) | perm | PTE_V;
+    if(a == last)
+      break;
+    a += SUPERPGSIZE;
+    pa += SUPERPGSIZE;
+  }
+  return 0;
+}
+#endif // LAB_PGTBL
+
 // create an empty user page table.
 // returns 0 if out of memory.
 pagetable_t
@@ -309,18 +364,19 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 uint64
 uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) // ANCHOR[id=uvmalloc] uvmalloc
 {
-  // TODO: megapage - 2MB super pages.
   char *mem;
   uint64 a;
-  int sz;
+#ifndef LAB_PGTBL
+  int sz; // ? why is there such a variable?
+#endif
 
   if(newsz < oldsz)
     return oldsz;
 
   oldsz = PGROUNDUP(oldsz);
 
-  // * keep kalloc for 4K, and use superalloc for 2MB allocations.
-  // ? When more than 2MB is requested, should the remainder be super or normal?
+#ifndef LAB_PGTBL
+  // Original non-superpage path
   for(a = oldsz; a < newsz; a += sz){
     sz = PGSIZE;
     mem = kalloc(); // LINK kernel/kalloc.c#kalloc
@@ -330,13 +386,60 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) // ANCHOR
     }
 #ifndef LAB_SYSCALL
     memset(mem, 0, sz);
- #endif
+#endif
     if(mappages(pagetable, a, sz, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
   }
+#else // * keep kalloc for 4K, and use superalloc for 2MB allocations.
+  // Phase 1: 4KB pages until superpage-aligned
+  uint64 super_start = SUPERPGROUNDUP(oldsz);
+  for(a = oldsz; a < newsz && a < super_start; a += PGSIZE){
+    mem = kalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+    memset(mem, 0, PGSIZE);
+    if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_W|PTE_U|xperm) != 0){
+      kfree(mem);
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+  }
+
+  // Phase 2: superpages for aligned 2MB chunks
+  for(; a + SUPERPGSIZE <= newsz; a += SUPERPGSIZE){
+    mem = superalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+    memset(mem, 0, SUPERPGSIZE);
+    if(mapsuperpages(pagetable, a, SUPERPGSIZE, (uint64)mem, PTE_R|PTE_W|PTE_U|xperm) != 0){
+      superfree(mem);
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+  }
+
+  // Phase 3: 4KB pages for remainder (not tested but good for completeness)
+  for(; a < newsz; a += PGSIZE){
+    mem = kalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+    memset(mem, 0, PGSIZE);
+    if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_W|PTE_U|xperm) != 0){
+      kfree(mem);
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+  }
+#endif
   return newsz;
 }
 
