@@ -101,12 +101,15 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
-      pagetable = (pagetable_t)PTE2PA(*pte);
+      // pagetable = (pagetable_t)PTE2PA(*pte); // ? moved down; is that correct?
 #ifdef LAB_PGTBL
       if(PTE_LEAF(*pte)) {
+        if((va % SUPERPGSIZE) == 0)
+          printf("walk: superpage at level %d, va=%p, pte=%p\n", level, (void*)va, pte);
         return pte;
       }
 #endif
+      pagetable = (pagetable_t)PTE2PA(*pte);
     } else {
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
         return 0;
@@ -328,28 +331,109 @@ uvmcreate()
   return pagetable;
 }
 
+#ifdef LAB_PGTBL
+// Demote a superpage mapping at va to 512 regular page mappings.
+// Remaps the same physical pages in-place (no allocation or copying).
+// va must be superpage-aligned.
+// Returns 0 on success, -1 if not a superpage.
+static int
+uvmdemote(pagetable_t pagetable, uint64 va)
+{
+  if((va % SUPERPGSIZE) != 0)
+    return -1;
+
+  pte_t *pte1 = walk_level1(pagetable, va, 0);
+  if(pte1 == 0 || (*pte1 & PTE_V) == 0 || !PTE_LEAF(*pte1))
+    return -1;  // not a superpage
+
+  uint64 pa = PTE2PA(*pte1);
+  uint flags = PTE_FLAGS(*pte1);
+
+  // Clear superpage PTE first
+  *pte1 = 0;
+
+  // Create level-0 mappings to the same physical pages
+  for(int i = 0; i < 512; i++){
+    if(mappages(pagetable, va + i*PGSIZE, PGSIZE, pa + i*PGSIZE, flags) != 0){
+      panic("uvmdemote: mappages failed");
+    }
+  }
+
+  return 0;
+}
+
+// Unmap a full superpage at va.
+// va must be superpage-aligned and point to a superpage.
+// Returns 1 if superpage was unmapped, 0 if not a superpage.
+// Note: Unlike uvmunmap, we don't panic when PTE_V is set without R/W/X bits.
+// At level-1, that's valid — it means the PTE points to a level-0 page table
+// (i.e., regular 4KB pages exist here, not a superpage). We just return 0.
+static int
+uvmsuperunmap(pagetable_t pagetable, uint64 va, int do_free)
+{
+  if((va % SUPERPGSIZE) != 0)
+    panic("uvmsuperunmap: va not aligned");
+
+  pte_t *pte = walk_level1(pagetable, va, 0);
+  if(pte == 0 || (*pte & PTE_V) == 0 || !PTE_LEAF(*pte))
+    return 0;  // not a superpage
+
+  if(do_free){
+    uint64 pa = PTE2PA(*pte);
+    superfree((void*)pa);
+  }
+  *pte = 0;
+  return 1;
+}
+#endif
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. It's OK if the mappings don't exist.
 // Optionally free the physical memory.
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
-  // TODO: superpage forking
   uint64 a;
   pte_t *pte;
-  int sz = PGSIZE;
+  uint64 sz;
 
   if((va % PGSIZE) != 0)
     panic("uvmunmap: not aligned");
 
   for(a = va; a < va + npages*PGSIZE; a += sz){
-    if((pte = walk(pagetable, a, 0)) == 0) // leaf page table entry allocated?
+    sz = PGSIZE;  // default increment
+
+#ifdef LAB_PGTBL
+    // Try full superpage unmap first
+    if((a % SUPERPGSIZE) == 0 && uvmsuperunmap(pagetable, a, do_free)){
+      sz = SUPERPGSIZE;
       continue;
-    if((*pte & PTE_V) == 0)  // has physical page been allocated?
+    }
+
+    // Check if we're inside a superpage that needs demotion.
+    // We use walk_level1 directly to check the level-1 PTE,
+    // because walk() returns a leaf PTE for both superpages and 4KB pages
+    // and we can't distinguish them from the PTE alone.
+    if((a % SUPERPGSIZE) != 0) {
+      uint64 super_va = SUPERPGROUNDDOWN(a);
+      pte_t *pte1 = walk_level1(pagetable, super_va, 0);
+      if(pte1 != 0 && (*pte1 & PTE_V) && PTE_LEAF(*pte1)){
+        // We're inside a superpage — demote it first
+        if(uvmdemote(pagetable, super_va) < 0)
+          panic("uvmunmap: demotion failed");
+      }
+    }
+#endif
+
+    pte = walk(pagetable, a, 0);
+
+    if(pte == 0)
       continue;
-    sz = PGSIZE;
+    if((*pte & PTE_V) == 0)
+      continue;
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
+
     if(do_free){
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
@@ -413,6 +497,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) // ANCHOR
   // Phase 2: superpages for aligned 2MB chunks
   for(; a + SUPERPGSIZE <= newsz; a += SUPERPGSIZE){
     mem = superalloc();
+    printf("uvmalloc: superalloc at va=%p returned pa=%p\n", (void*)a, mem);
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
       return 0;
@@ -501,20 +586,39 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
-  // TODO: superpage forking
   pte_t *pte;
   uint64 pa, i;
   uint flags;
   char *mem;
-  int szinc = PGSIZE;
 
-  for(i = 0; i < sz; i += szinc){
-    if((pte = walk(old, i, 0)) == 0)
-      continue;
-    if((*pte & PTE_V) == 0) {
+  for(i = 0; i < sz; ){
+#ifdef LAB_PGTBL
+    // Check if this is a superpage
+    pte_t *pte1 = walk_level1(old, i, 0);
+    if(pte1 != 0 && (*pte1 & PTE_V) && PTE_LEAF(*pte1)){
+      // It's a superpage - copy the whole 2MB
+      pa = PTE2PA(*pte1);
+      flags = PTE_FLAGS(*pte1);
+      if((mem = superalloc()) == 0)
+        goto err;
+      memmove(mem, (char*)pa, SUPERPGSIZE);
+      if(mapsuperpages(new, i, SUPERPGSIZE, (uint64)mem, flags) != 0){
+        superfree(mem);
+        goto err;
+      }
+      i += SUPERPGSIZE;
       continue;
     }
-    szinc = PGSIZE;
+#endif
+    // Regular 4KB page
+    if((pte = walk(old, i, 0)) == 0){
+      i += PGSIZE;
+      continue;
+    }
+    if((*pte & PTE_V) == 0) {
+      i += PGSIZE;
+      continue;
+    }
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -524,6 +628,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       kfree(mem);
       goto err;
     }
+    i += PGSIZE;
   }
   return 0;
 

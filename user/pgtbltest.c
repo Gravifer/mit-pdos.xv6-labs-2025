@@ -127,19 +127,19 @@ supercheck(char *end)
   }
 }
 
-/* TODO: support superpages
+/* DONE: support superpages
 Some hints:
 - [x] Read superpg_fork and superpg_free in user/pgtbltest.c.
 - [x] A good place to start is sys_sbrk in kernel/sysproc.c, 
         which is invoked by the sbrk system call. 
       Follow the code path to the growproc function that eagerly allocates memory for sbrk.
-- [ ] Your kernel will need to be able to allocate and free two-megabyte regions. 
+- [x] Your kernel will need to be able to allocate and free two-megabyte regions. 
       Modify kalloc.c to set aside a few two-megabyte areas of physical memory, 
         and create superalloc() and superfree() functions. 
       You'll only need a handful of two-megabyte chunks of memory.
-- [ ] Superpages must be allocated when a process with superpages forks, and freed when it exits; 
+- [x] Superpages must be allocated when a process with superpages forks, and freed when it exits; 
         you'll need to modify uvmcopy() and uvmunmap().
-- [ ] When sbrk frees a superpage partially (e.g., freeing the last 4096 bytes of a superpage), 
+- [x] When sbrk frees a superpage partially (e.g., freeing the last 4096 bytes of a superpage), 
         you will need to "demote" a super page into regular pages.
 */
 

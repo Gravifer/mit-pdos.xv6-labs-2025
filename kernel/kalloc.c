@@ -3,8 +3,8 @@
 // and pipe buffers. Allocates whole 4096-byte pages.
 
 #ifdef LAB_PGTBL
-// TODO: megapage - 2MB super pages.
-#define NSUPERPAGES 8
+// DONE: megapage - 2MB super pages.
+#define NSUPERPAGES 16
 #endif
 
 #include "types.h"
@@ -52,7 +52,7 @@ kinit()
 
 void
 freerange(void *pa_start, void *pa_end) // ANCHOR[id=freerange] freerange
-{ // TODO: handle superpages
+{
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)

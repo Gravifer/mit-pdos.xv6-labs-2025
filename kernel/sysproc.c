@@ -50,7 +50,7 @@ sys_sbrk(void)
   argint(1, &t);
   addr = myproc()->sz;
   
-  /* TODO: superpage
+  /* DONE: superpage
    *  if a user program calls sbrk() with a size of 2 megabytes or more, 
    *  and the newly created address range includes one or more areas 
    *  that are two-megabyte-aligned and at least two megabytes in size, 
