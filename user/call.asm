@@ -29,7 +29,7 @@ int f(int x) {
   12:	0800                	addi	s0,sp,16      # prologue: establish new frame pointer
   return g(x);
 }
-  14:	250d                	addiw	a0,a0,3
+  14:	250d                	addiw	a0,a0,3       # g() is inlined
   16:	6422                	ld	s0,8(sp)      # epilogue: restore old frame pointer
   18:	0141                	addi	sp,sp,16      # epilogue: deallocate stack frame
   1a:	8082                	ret                   # epilogue: return
@@ -43,8 +43,8 @@ void main(void) {
   22:	0800                	addi	s0,sp,16
   printf("%d %d\n", f(8)+1, 13);
   24:	4635                	li	a2,13
-  26:	45b1                	li	a1,12
-  28:	00001517          	auipc	a0,0x1
+  26:	45b1                	li	a1,12         # inlined: f(8)+1 is 12
+  28:	00001517          	auipc	a0,0x1        # auipc = add upper immediate to pc
   2c:	88850513          	addi	a0,a0,-1912 # 8b0 <malloc+0x106>
   30:	6c6000ef          	jal	6f6 <printf>
   exit(0);
@@ -1247,10 +1247,10 @@ fprintf(int fd, const char *fmt, ...)
 00000000000006f6 <printf>:
 
 void
-printf(const char *fmt, ...)
+printf(const char *fmt, ...)                          # printf is at 6f6
 {
  6f6:	711d                	addi	sp,sp,-96
- 6f8:	ec06                	sd	ra,24(sp)
+ 6f8:	ec06                	sd	ra,24(sp)         # when just `jal`ed from main, this is PC+4 as of main, so 0x34
  6fa:	e822                	sd	s0,16(sp)
  6fc:	1000                	addi	s0,sp,32
  6fe:	e40c                	sd	a1,8(s0)
