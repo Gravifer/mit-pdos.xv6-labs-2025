@@ -35,9 +35,9 @@ trapinithart(void)
 // return value is user satp for trampoline.S to switch to.
 //
 uint64
-usertrap(void)
+usertrap(void) // ANCHOR[id=usertrap] usertrap
 {
-  int which_dev = 0;
+  int which_dev = 0; // LINK devintr
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
@@ -133,7 +133,7 @@ prepare_return(void)
 // interrupts and exceptions from kernel code go here via kernelvec,
 // on whatever the current kernel stack is.
 void 
-kerneltrap()
+kerneltrap() // ANCHOR[id=kerneltrap] kerneltrap
 {
   int which_dev = 0;
   uint64 sepc = r_sepc();
@@ -183,7 +183,7 @@ clockintr()
 // 1 if other device,
 // 0 if not recognized.
 int
-devintr()
+devintr() // ANCHOR[id=devintr] devintr - [0,1,2] => [not recognized, other device, timer interrupt]
 {
   uint64 scause = r_scause();
 

@@ -19,13 +19,18 @@
 trampoline:
 .align 4
 .globl uservec
-uservec:    
+uservec:    # ANCHOR[id=uservec] uservec
 	#
         # trap.c sets stvec to point here, so
         # traps from user space start here,
         # in supervisor mode, but with a
         # user page table.
         #
+
+        # * Control and Status Registers (CSRs) are special registers that 
+        # * control the behavior of the RISC-V processor and provide information about its state. 
+        # * CSR instructions are atomic.
+        # * `sscratch` stands for supervisor-mode scratch.
 
         # save user a0 in sscratch so
         # a0 can be used to get at TRAPFRAME.
