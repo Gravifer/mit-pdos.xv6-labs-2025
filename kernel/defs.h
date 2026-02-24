@@ -81,6 +81,8 @@ void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
 void            backtrace(void);
 const char*     address_to_symbol(uint64);
+struct symbol_info; // Forward declare
+const struct symbol_info* address_to_symbol_info(uint64);
 
 // proc.c
 int             cpuid(void);

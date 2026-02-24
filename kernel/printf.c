@@ -159,9 +159,17 @@ printfinit(void)
     0x0000000080002898
 */
 
-// Weak stub; will be overridden by symbols.c
+// Weak stubs; will be overridden by symbols.c
+struct symbol_info { uint64 addr; const char *name; const char *file; int line; };
+
 __attribute__((weak)) const char*
 address_to_symbol(uint64 addr)
+{
+  return 0;
+}
+
+__attribute__((weak)) const struct symbol_info*
+address_to_symbol_info(uint64 addr)
 {
   return 0;
 }
@@ -174,8 +182,12 @@ backtrace(void)
   printf("backtrace:\n");
   while(fp && PGROUNDDOWN(fp) == stack_page){
     uint64 ra = *((uint64*)fp - 1); // return address is at fp - 8
-    const char *sym = address_to_symbol(ra);
-    printf("%p %s\n", (void *)ra, sym ? sym : "?");
+    const struct symbol_info *info = address_to_symbol_info(ra);
+    if(info && info->name && info->file) {
+      printf("%p [%s]\t%s:%d\n", (void *)ra, info->name, info->file, info->line);
+    } else {
+      printf("%p\n", (void *)ra);
+    }
     fp = *((uint64*)fp - 2); // previous frame pointer is at fp - 16
   }
 
