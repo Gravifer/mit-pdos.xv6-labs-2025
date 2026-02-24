@@ -166,7 +166,7 @@ backtrace(void)
   printf("backtrace:\n");
   while(fp && PGROUNDDOWN(fp) == stack_page){
     uint64 ra = *((uint64*)fp - 1); // return address is at fp - 8
-    printf("  %p\n", (void *)ra);
+    printf("%p\n", (void *)ra);
     fp = *((uint64*)fp - 2); // previous frame pointer is at fp - 16
   }
 

@@ -140,6 +140,15 @@ found:
     return 0;
   }
 
+// #ifdef LAB_TRAP
+  p->alarm.interval = -1; // -1 means inactive
+  p->alarm.handler = 0;
+  p->alarm.ticks = 0;
+  p->alarm.saved_epc = 0;
+  // p->alarm.saved_trapframe = 0;
+  // p->alarm.in_handler = 0;
+// #endif
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));

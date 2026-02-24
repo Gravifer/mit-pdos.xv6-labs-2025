@@ -25,6 +25,12 @@ char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
 
+// #ifdef LAB_TRAP
+int sigalarm(int, void (*)(void));
+int sigreturn(void);
+// #endif
+
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

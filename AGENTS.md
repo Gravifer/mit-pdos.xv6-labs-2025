@@ -17,6 +17,8 @@ This file is the repository-wide entrypoint for coding agents.
 - Validate with the most specific test first, then broader tests.
 - Do not introduce cross-lab coupling unless explicitly requested.
 - Ask concise clarifying questions when requirements are ambiguous.
+- **Do not remove comments** that are not of your task's concern!
+- You'll need `make qemu` and run tests inside the vm to confirm changes to be valid; hand those over to the user to do.
 
 ## Lab overlay contract
 

@@ -1,3 +1,6 @@
+#define LAB_TRAP
+#define EXERCISE_SIGALARM
+
 struct buf;
 struct context;
 struct file;

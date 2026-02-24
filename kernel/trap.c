@@ -81,8 +81,24 @@ usertrap(void) // ANCHOR[id=usertrap] usertrap
     kexit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    // track alarm ticks for this process
+    // #ifdef LAB_TRAP
+    if(p->alarm.interval > 0){ // && !p->alarm.in_handler) {
+      if (p->alarm.ticks < (uint)-1) p->alarm.ticks++;
+      // proper handler invocation will happen later (test1+ feature)
+      // for now. call once
+      if(p->alarm.ticks >= p->alarm.interval){
+        p->alarm.ticks = 0;
+        // Save interrupted program counter
+        p->alarm.saved_epc = p->trapframe->epc;
+        // Redirect to handler
+        p->trapframe->epc = (uint64)p->alarm.handler;
+      }
+    }
+    // #endif
     yield();
+  }
 
   prepare_return();
 

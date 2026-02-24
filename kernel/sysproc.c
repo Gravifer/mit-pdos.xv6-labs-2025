@@ -106,3 +106,43 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+// #ifdef LAB_TRAP
+uint64
+sys_sigalarm(void)
+{
+  int interval;
+  uint64 handler;
+  argint(0, &interval);
+  argaddr(1, &handler);
+  struct proc *p = myproc();
+  
+  // Handle disable: sigalarm(0, 0) sets canonical inactive value
+  if (interval == 0 && handler == 0) {
+    p->alarm.interval = -1;  // canonical inactive value
+    p->alarm.handler = 0;
+    p->alarm.ticks = 0;
+    return 0;
+  }
+  
+  // Reject invalid: negative intervals (except via sigalarm(0,0) above)
+  if (interval <= 0) {
+    return (uint64)-1;
+  }
+  
+  p->alarm.interval = interval;
+  p->alarm.handler = (void (*)(void))handler;
+  p->alarm.ticks = 0;
+  return 0;
+}
+
+uint64
+sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  // Restore saved program counter to return to interrupted code
+  p->trapframe->epc = p->alarm.saved_epc;
+  return 0;
+}
+// #endif
