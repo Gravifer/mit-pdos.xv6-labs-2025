@@ -140,6 +140,7 @@ panic(char *s)
   printf("panic: ");
   printf("%s\n", s);
   panicked = 1; // freeze uart output from other CPUs
+  backtrace();
   for(;;)
     ;
 }
@@ -148,4 +149,40 @@ void
 printfinit(void)
 {
   initlock(&pr.lock, "pr");
+}
+
+/* a backtrace to be used in SYS_PAUSE
+  output should be a list of return addresses with this form (but the numbers will likely be different):
+    backtrace:
+    0x0000000080002cda
+    0x0000000080002bb6
+    0x0000000080002898
+*/
+void
+backtrace(void)
+{
+  uint64 fp = r_fp();
+  uint64 stack_page = PGROUNDDOWN(fp);
+  printf("backtrace:\n");
+  while(fp && PGROUNDDOWN(fp) == stack_page){
+    uint64 ra = *((uint64*)fp - 1); // return address is at fp - 8
+    printf("  %p\n", (void *)ra);
+    fp = *((uint64*)fp - 2); // previous frame pointer is at fp - 16
+  }
+
+  if (0) { // temporary diagnostics: dump each frame's nearby words for manual inspection.
+    fp = r_fp();
+    printf("backtrace frame dump:\n");
+    while(fp && PGROUNDDOWN(fp) == stack_page){
+      uint64 prev_fp = *((uint64*)fp - 2);
+      uint64 ra = *((uint64*)fp - 1);
+      printf("  frame fp=%p page=%p\n", (void*)fp, (void*)PGROUNDDOWN(fp));
+      printf("    [fp-16] saved fp : %p\n", (void*)prev_fp);
+      printf("    [fp-8 ] saved ra : %p (callsite %p)\n", (void*)ra, (void*)(ra - 4));
+      printf("    [fp+0 ] word     : %p\n", (void*)(*(uint64*)(fp + 0)));
+      printf("    [fp+8 ] word     : %p\n", (void*)(*(uint64*)(fp + 8)));
+      printf("    [fp+16] word     : %p\n", (void*)(*(uint64*)(fp + 16)));
+      fp = prev_fp;
+    }
+  }
 }
