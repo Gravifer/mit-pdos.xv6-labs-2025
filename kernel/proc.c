@@ -144,9 +144,8 @@ found:
   p->alarm.interval = -1; // -1 means inactive
   p->alarm.handler = 0;
   p->alarm.ticks = 0;
-  p->alarm.saved_epc = 0;
-  // p->alarm.saved_trapframe = 0;
-  // p->alarm.in_handler = 0;
+  p->alarm.saved_trapframe = 0;
+  p->alarm.in_handler = 0;
 // #endif
 
   // Set up new context to start executing at forkret,
@@ -167,6 +166,11 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  // #ifdef LAB_TRAP
+  if(p->alarm.saved_trapframe)
+    kfree((void*)p->alarm.saved_trapframe);
+  p->alarm.saved_trapframe = 0;
+  // #endif
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;

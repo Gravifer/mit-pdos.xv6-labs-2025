@@ -111,8 +111,8 @@ struct proc {
     int interval;              // number of ticks between alarms; -1 means inactive (<=0 get normalized)
     void (*handler)(void);     // function to call on alarm
     uint ticks;                // ticks since last alarm (uint to allow >= interval even at INT_MAX)
-    // struct trapframe *saved_trapframe;  // saved trapframe for handler return
-    // int in_handler;            // prevent re-entrant handler invocations
+    struct trapframe *saved_trapframe;  // saved trapframe for handler return
+    int in_handler;            // prevent re-entrant handler invocations
   } alarm;
 // #endif
 };

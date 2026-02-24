@@ -149,7 +149,12 @@ syscall(void)
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
-    p->trapframe->a0 = syscalls[num]();
+    // Exception: sigreturn restores a0 itself, don't overwrite it
+    if(num != SYS_sigreturn) { // ? is special handling it here really a good idea?
+      p->trapframe->a0 = syscalls[num]();
+    } else {
+      syscalls[num]();
+    }
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

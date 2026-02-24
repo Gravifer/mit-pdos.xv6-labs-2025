@@ -141,8 +141,12 @@ uint64
 sys_sigreturn(void)
 {
   struct proc *p = myproc();
-  // Restore saved program counter to return to interrupted code
-  p->trapframe->epc = p->alarm.saved_epc;
+  if(p->alarm.saved_trapframe != 0) {
+    // Restore all registers (including a0) from saved state
+    memmove(p->trapframe, p->alarm.saved_trapframe, sizeof(struct trapframe));
+  }
+  // Clear re-entrancy guard
+  p->alarm.in_handler = 0;
   return 0;
 }
 // #endif

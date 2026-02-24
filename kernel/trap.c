@@ -84,16 +84,22 @@ usertrap(void) // ANCHOR[id=usertrap] usertrap
   if(which_dev == 2) {
     // track alarm ticks for this process
     // #ifdef LAB_TRAP
-    if(p->alarm.interval > 0){ // && !p->alarm.in_handler) {
+    if(p->alarm.interval > 0 && !p->alarm.in_handler) {
       if (p->alarm.ticks < (uint)-1) p->alarm.ticks++;
       // proper handler invocation will happen later (test1+ feature)
       // for now. call once
       if(p->alarm.ticks >= p->alarm.interval){
         p->alarm.ticks = 0;
-        // Save interrupted program counter
-        p->alarm.saved_epc = p->trapframe->epc;
-        // Redirect to handler
-        p->trapframe->epc = (uint64)p->alarm.handler;
+        // Save complete register state before invoking handler
+        if(p->alarm.saved_trapframe == 0) {
+          p->alarm.saved_trapframe = kalloc();
+        }
+        if(p->alarm.saved_trapframe != 0) {
+          memmove(p->alarm.saved_trapframe, p->trapframe, sizeof(struct trapframe));
+          // Redirect to handler and mark as in-handler
+          p->alarm.in_handler = 1;
+          p->trapframe->epc = (uint64)p->alarm.handler;
+        }
       }
     }
     // #endif
