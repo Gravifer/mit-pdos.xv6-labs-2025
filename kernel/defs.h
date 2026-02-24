@@ -80,6 +80,7 @@ int             printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
 void            backtrace(void);
+const char*     address_to_symbol(uint64);
 
 // proc.c
 int             cpuid(void);

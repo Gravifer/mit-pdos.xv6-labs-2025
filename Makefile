@@ -133,6 +133,10 @@ $K/kernel: $(OBJS) $(OBJS_KCSAN) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) $(OBJS_KCSAN)
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
+	python3 scripts/make_symbols.py $K/kernel.sym $K/symbols.c
+	$(CC) $(CFLAGS) -c -o $K/symbols.o $K/symbols.c
+	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) $(OBJS_KCSAN) $K/symbols.o
+	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 $(OBJS): EXTRAFLAG := $(KCSANFLAG)
 
 $K/%.o: $K/%.c

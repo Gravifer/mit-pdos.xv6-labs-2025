@@ -158,6 +158,14 @@ printfinit(void)
     0x0000000080002bb6
     0x0000000080002898
 */
+
+// Weak stub; will be overridden by symbols.c
+__attribute__((weak)) const char*
+address_to_symbol(uint64 addr)
+{
+  return 0;
+}
+
 void
 backtrace(void)
 {
@@ -166,7 +174,8 @@ backtrace(void)
   printf("backtrace:\n");
   while(fp && PGROUNDDOWN(fp) == stack_page){
     uint64 ra = *((uint64*)fp - 1); // return address is at fp - 8
-    printf("%p\n", (void *)ra);
+    const char *sym = address_to_symbol(ra);
+    printf("%p %s\n", (void *)ra, sym ? sym : "?");
     fp = *((uint64*)fp - 2); // previous frame pointer is at fp - 16
   }
 
