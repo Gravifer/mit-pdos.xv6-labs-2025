@@ -257,7 +257,7 @@ int
 kfork(void)
 {
   int i, pid;
-  struct proc *np;
+  struct proc *np; // new process (the child)
   struct proc *p = myproc();
 
   // Allocate process.
@@ -266,6 +266,8 @@ kfork(void)
   }
 
   // Copy user memory from parent to child.
+  // ? (cow) - modify this or modify uvmcopy() ?
+  // * uvmcopy() is only ever used for fork, so yes!
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);

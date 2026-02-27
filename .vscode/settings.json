@@ -1,0 +1,8 @@
+{
+    "workbench.editor.defaultBinaryEditor": "hexEditor.hexedit",
+    "workbench.editor.limit.excludeDirty": true,
+    "workbench.editor.highlightModifiedTabs": true,
+    "workbench.editor.enablePreviewFromCodeNavigation": true,
+    "workbench.editor.enablePreviewFromQuickOpen": true,
+    "workbench.editor.pinnedTabSizing": "compact"
+}

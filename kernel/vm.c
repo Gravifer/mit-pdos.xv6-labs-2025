@@ -287,14 +287,25 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
-// Given a parent process's page table, copy
-// its memory into a child's page table.
-// Copies both the page table and the
-// physical memory.
+// // Given a parent process's page table, copy
+// // its memory into a child's page table.
+// // Copies both the page table and the
+// // physical memory.
+// // returns 0 on success, -1 on failure.
+// // frees any allocated pages on failure.
+#ifndef CoW
+#define CoW
+#endif
+// Given a parent process's page table, map
+// its physical pages into the child, instead of allocating new pages.
+// Copies only the page table, not the
+// physical memory. 
+// * Clear PTE_W in the PTEs of both child and parent for pages that have PTE_W set.
+// * These would need vmfault() to handle.
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
 int
-uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
+uvmcopy(pagetable_t old, pagetable_t new, uint64 sz) // ANCHOR[id=uvmcopy] uvmcopy
 {
   pte_t *pte;
   uint64 pa, i;
@@ -308,6 +319,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       continue;   // physical page hasn't been allocated
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
+#ifndef CoW
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
@@ -315,6 +327,15 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       kfree(mem);
       goto err;
     }
+#else
+    if(pte & (PTE_W)){ // TODO: double check PTE_RSW_CoW handling
+      if (pte & (PTE_RSW_CoW)) panic("encountered a page with RSW_CoW & PTE_W");
+      pte &= (PTE_RSW_CoW | ~PTE_W); // mark the page was originally writable
+    }
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
+      goto err;
+    }
+#endif
   }
   return 0;
 
@@ -450,7 +471,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 // returns 0 if va is invalid or already mapped, or if
 // out of physical memory, and physical address if successful.
 uint64
-vmfault(pagetable_t pagetable, uint64 va, int read)
+vmfault(pagetable_t pagetable, uint64 va, int read) // ANCHOR[id=vmfault] vmfault
 {
   uint64 mem;
   struct proc *p = myproc();
@@ -458,6 +479,8 @@ vmfault(pagetable_t pagetable, uint64 va, int read)
   if (va >= p->sz)
     return 0;
   va = PGROUNDDOWN(va);
+  // TODO: CoW pages are indeed mapped; still needs handling.
+  // ? Where to put the page reference? Where to put the originally-writable marker?
   if(ismapped(pagetable, va)) {
     return 0;
   }
