@@ -266,8 +266,8 @@ kfork(void)
   }
 
   // Copy user memory from parent to child.
-  // ? (cow) - modify this or modify uvmcopy() ?
-  // * uvmcopy() is only ever used for fork, so yes!
+  // // (cow) - modify this or modify uvmcopy() ?
+  // * uvmcopy() is only ever used for fork, so modify that
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
